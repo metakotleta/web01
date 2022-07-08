@@ -10,15 +10,19 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.function.Function;
 
 public class Server {
     ExecutorService pool = Executors.newFixedThreadPool(64);
     final List<String> validPaths = List.of("/index.html", "/spring.svg", "/spring.png", "/resources.html", "/styles.css",
             "/app.js", "/links.html", "/forms.html", "/classic.html", "/events.html", "/events.js");
-    public static final int PORT = 9999;
+    private ConcurrentHashMap<String, ConcurrentHashMap<String, Handler>> handlers = new ConcurrentHashMap();
+    private static final int PORT = 9999;
+
+
 
     public void startServer() throws IOException {
 
@@ -47,7 +51,13 @@ public class Server {
                     continue;
                 }
 
+                final var method = parts[0];
+
                 final var path = parts[1];
+                Request req = new Request(method, path);
+
+                handlers.get(method).get(path).handle(req, out);
+
                 if (!validPaths.contains(path)) {
                     out.write((
                             "HTTP/1.1 404 Not Found\r\n" +
@@ -58,6 +68,8 @@ public class Server {
                     out.flush();
                     continue;
                 }
+
+
 
                 final var filePath = Path.of(".", "public", path);
                 final var mimeType = Files.probeContentType(filePath);
@@ -95,6 +107,12 @@ public class Server {
                 e.printStackTrace();
             }
         }
+    }
+
+    public void addHandler(String get, String s, Handler handler) {
+        ConcurrentHashMap<String, Handler> map = new ConcurrentHashMap<>();
+        map.put(s, handler);
+        handlers.put(get, map);
     }
 }
 
