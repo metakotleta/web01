@@ -11,14 +11,6 @@ public class Request {
         this.path = path;
     }
 
-    public void setMethod(String method) {
-        this.method = method;
-    }
-
-    public void setPath(String path) {
-        this.path = path;
-    }
-
     public void setBody(String body) {
         this.body = body;
     }

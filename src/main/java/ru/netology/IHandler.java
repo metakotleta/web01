@@ -2,6 +2,7 @@ package ru.netology;
 
 import java.io.BufferedOutputStream;
 
-public interface Handler {
+@FunctionalInterface
+public interface IHandler {
     public void handle(Request request, BufferedOutputStream stream);
 }
