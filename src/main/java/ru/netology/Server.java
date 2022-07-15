@@ -1,5 +1,7 @@
 package ru.netology;
 
+import org.apache.http.client.utils.URLEncodedUtils;
+
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -7,6 +9,7 @@ import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.CharBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -53,7 +56,7 @@ public class Server {
                         var method = parts[0];
                         var path = parts[1];
                         Request req = new Request(method, path);
-                        if (!validPaths.contains(path)) {
+                        if (!validPaths.contains(req.getPath())) {
                             out.write((
                                     "HTTP/1.1 404 Not Found\r\n" +
                                             "Content-Length: 0\r\n" +
@@ -67,7 +70,7 @@ public class Server {
                             req.setBody(bodyLines);
                         }
 
-                        byMethod.get(method).get(path).handle(req, out);
+                        byMethod.get(method).get(req.getPath()).handle(req, out);
                     }
 
                 }

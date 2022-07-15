@@ -14,14 +14,18 @@ public class Main {
 
         // добавление handler'ов (обработчиков)
         //просто отдаст 200
-        server.addHandler("GET", "/urlencode", (request, responseStream) -> {
-
+        server.addHandler("POST", "/urlencode", (request, responseStream) -> {
+            var content = request.getBody() + "\r\n" + request.getQueryList().toString() + "\r\n";
         //    URLEncodedUtil.
             responseStream.write((
                     "HTTP/1.1 200 OK\r\n" +
-                            "Content-Length: " + 0 + "\r\n" +
+                            "Content-Length: " + content.length() + "\r\n" +
                             "Connection: close\r\n" +
                             "\r\n"
+            ).getBytes());
+            responseStream.write((
+                    request.getBody() + "\r\n" +
+                            request.getQueryList().toString() + "\r\n"
             ).getBytes());
             responseStream.flush();
         });
