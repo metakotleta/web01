@@ -1,30 +1,28 @@
 package ru.netology;
 
+import org.apache.http.client.utils.URLEncodedUtils;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 
+
 public class Main {
     public static void main(String[] args) throws IOException {
-
         Server server = new Server();
 
         // добавление handler'ов (обработчиков)
         //просто отдаст 200
-        server.addHandler("GET", "/", (request, responseStream) -> {
-            final var filePath = Path.of(".", "public", request.getPath());
-            final var mimeType = Files.probeContentType(filePath);
+        server.addHandler("GET", "/urlencode", (request, responseStream) -> {
 
-            final var length = Files.size(filePath);
+        //    URLEncodedUtil.
             responseStream.write((
                     "HTTP/1.1 200 OK\r\n" +
-                            "Content-Type: " + mimeType + "\r\n" +
-                            "Content-Length: " + length + "\r\n" +
+                            "Content-Length: " + 0 + "\r\n" +
                             "Connection: close\r\n" +
                             "\r\n"
             ).getBytes());
-            Files.copy(filePath, responseStream);
             responseStream.flush();
         });
         //вернет body запроса

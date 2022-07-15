@@ -19,9 +19,10 @@ import java.util.stream.Collectors;
 public class Server {
     private static final int PORT = 9999;
     final List<String> validPaths = List.of("/spring.svg", "/spring.png", "/legacy/resources.html", "/styles.css",
-            "/app.js", "/classic.html", "/index.html", "/events.js", "/messages");
+            "/app.js", "/classic.html", "/index.html", "/events.js", "/messages", "/urlencode");
     ExecutorService pool = Executors.newFixedThreadPool(64);
-    private ConcurrentHashMap<String, ConcurrentHashMap<String, IHandler>> handlers = new ConcurrentHashMap();
+    private ConcurrentHashMap<String, ConcurrentHashMap<String, IHandler>> byMethod = new ConcurrentHashMap();
+
 
     public void startServer() throws IOException {
         ServerSocket serverSocket = new ServerSocket(PORT);
@@ -66,7 +67,7 @@ public class Server {
                             req.setBody(bodyLines);
                         }
 
-                        handlers.get(method).get(path).handle(req, out);
+                        byMethod.get(method).get(path).handle(req, out);
                     }
 
                 }
@@ -78,10 +79,14 @@ public class Server {
 
     }
 
-    public void addHandler(String get, String s, IHandler handler) {
-        ConcurrentHashMap<String, IHandler> map = new ConcurrentHashMap<>();
-        map.put(s, handler);
-        handlers.put(get, map);
+    public void addHandler(String method, String s, IHandler handler) {
+        if (byMethod.containsKey(method)) {
+            byMethod.get(method).put(s, handler);
+        } else {
+            ConcurrentHashMap<String, IHandler> map = new ConcurrentHashMap<>();
+            map.put(s, handler);
+            byMethod.put(method, map);
+        }
     }
 
     private String parse(BufferedReader in) throws IOException {
