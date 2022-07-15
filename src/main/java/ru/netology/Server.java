@@ -7,6 +7,9 @@ import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.CharBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -15,8 +18,8 @@ import java.util.stream.Collectors;
 
 public class Server {
     private static final int PORT = 9999;
-    final List<String> validPaths = List.of("/index.html", "/spring.svg", "/spring.png", "/resources.html", "/styles.css",
-            "/app.js", "/links.html", "/forms.html", "/classic.html", "/events.html", "/events.js", "/messages");
+    final List<String> validPaths = List.of("/spring.svg", "/spring.png", "/legacy/resources.html", "/styles.css",
+            "/app.js", "/classic.html", "/index.html", "/events.js", "/messages");
     ExecutorService pool = Executors.newFixedThreadPool(64);
     private ConcurrentHashMap<String, ConcurrentHashMap<String, IHandler>> handlers = new ConcurrentHashMap();
 
@@ -59,17 +62,20 @@ public class Server {
                             out.flush();
                             continue;
                         }
-                        if (!bodyLines.isEmpty()) {
+                        if (bodyLines != null && !bodyLines.isEmpty()) {
                             req.setBody(bodyLines);
                         }
 
                         handlers.get(method).get(path).handle(req, out);
                     }
+
                 }
-            } catch (IOException e) {
+
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
+
     }
 
     public void addHandler(String get, String s, IHandler handler) {
@@ -79,7 +85,7 @@ public class Server {
     }
 
     private String parse(BufferedReader in) throws IOException {
-        CharBuffer reqBuffer = CharBuffer.allocate(128);
+        CharBuffer reqBuffer = CharBuffer.allocate(1024);
         int count = in.read(reqBuffer);
         if (count != -1) {
             reqBuffer.clear();
@@ -91,12 +97,20 @@ public class Server {
 
     private String getBody(String requestLines) {
         List<String> reqLines = requestLines.lines().collect(Collectors.toList());
+        int bodyStart = 0;
+        StringBuilder body = new StringBuilder();
         for (int i = 0; i < reqLines.size(); i++) {
             if (reqLines.get(i).isEmpty()) {
-                return reqLines.get(i + 1);
+                bodyStart = i + 1;
+                break;
             }
         }
-        return null;
+        if (bodyStart < reqLines.size() && bodyStart != 0) {
+            for (int i = bodyStart; i < reqLines.size(); i++) {
+                body.append(reqLines.get(i) + "\r\n");
+            }
+        }
+        return body.toString();
     }
 }
 
