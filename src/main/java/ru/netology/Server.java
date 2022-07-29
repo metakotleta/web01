@@ -1,7 +1,5 @@
 package ru.netology;
 
-import org.apache.http.client.utils.URLEncodedUtils;
-
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -9,10 +7,6 @@ import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.CharBuffer;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -56,7 +50,15 @@ public class Server {
                         var method = parts[0];
                         var path = parts[1];
                         Request req = new Request(method, path);
-                        if (!validPaths.contains(req.getPath())) {
+
+                        if (bodyLines != null && !bodyLines.isEmpty()) {
+                            req.setBody(bodyLines);
+                        }
+
+                        IHandler handler = byMethod.get(req.getMethod()).get(req.getPath());
+                        if (handler != null) {
+                            handler.handle(req, out);
+                        } else {
                             out.write((
                                     "HTTP/1.1 404 Not Found\r\n" +
                                             "Content-Length: 0\r\n" +
@@ -64,18 +66,10 @@ public class Server {
                                             "\r\n"
                             ).getBytes());
                             out.flush();
-                            continue;
                         }
-                        if (bodyLines != null && !bodyLines.isEmpty()) {
-                            req.setBody(bodyLines);
-                        }
-
-                        byMethod.get(method).get(req.getPath()).handle(req, out);
                     }
-
                 }
-
-            } catch (Exception e) {
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         }
@@ -115,7 +109,7 @@ public class Server {
         }
         if (bodyStart < reqLines.size() && bodyStart != 0) {
             for (int i = bodyStart; i < reqLines.size(); i++) {
-                body.append(reqLines.get(i) + "\r\n");
+                body.append(reqLines.get(i).trim());
             }
         }
         return body.toString();
