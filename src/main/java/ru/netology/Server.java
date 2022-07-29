@@ -7,9 +7,6 @@ import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.CharBuffer;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -19,9 +16,10 @@ import java.util.stream.Collectors;
 public class Server {
     private static final int PORT = 9999;
     final List<String> validPaths = List.of("/spring.svg", "/spring.png", "/legacy/resources.html", "/styles.css",
-            "/app.js", "/classic.html", "/index.html", "/events.js", "/messages");
+            "/app.js", "/classic.html", "/index.html", "/events.js", "/messages", "/urlencode");
     ExecutorService pool = Executors.newFixedThreadPool(64);
-    private ConcurrentHashMap<String, ConcurrentHashMap<String, IHandler>> handlers = new ConcurrentHashMap();
+    private ConcurrentHashMap<String, ConcurrentHashMap<String, IHandler>> byMethod = new ConcurrentHashMap();
+
 
     public void startServer() throws IOException {
         ServerSocket serverSocket = new ServerSocket(PORT);
@@ -52,7 +50,15 @@ public class Server {
                         var method = parts[0];
                         var path = parts[1];
                         Request req = new Request(method, path);
-                        if (!validPaths.contains(path)) {
+
+                        if (bodyLines != null && !bodyLines.isEmpty()) {
+                            req.setBody(bodyLines);
+                        }
+
+                        IHandler handler = byMethod.get(req.getMethod()).get(req.getPath());
+                        if (handler != null) {
+                            handler.handle(req, out);
+                        } else {
                             out.write((
                                     "HTTP/1.1 404 Not Found\r\n" +
                                             "Content-Length: 0\r\n" +
@@ -60,28 +66,24 @@ public class Server {
                                             "\r\n"
                             ).getBytes());
                             out.flush();
-                            continue;
                         }
-                        if (bodyLines != null && !bodyLines.isEmpty()) {
-                            req.setBody(bodyLines);
-                        }
-
-                        handlers.get(method).get(path).handle(req, out);
                     }
-
                 }
-
-            } catch (Exception e) {
+            } catch (IOException e) {
                 e.printStackTrace();
             }
         }
 
     }
 
-    public void addHandler(String get, String s, IHandler handler) {
-        ConcurrentHashMap<String, IHandler> map = new ConcurrentHashMap<>();
-        map.put(s, handler);
-        handlers.put(get, map);
+    public void addHandler(String method, String s, IHandler handler) {
+        if (byMethod.containsKey(method)) {
+            byMethod.get(method).put(s, handler);
+        } else {
+            ConcurrentHashMap<String, IHandler> map = new ConcurrentHashMap<>();
+            map.put(s, handler);
+            byMethod.put(method, map);
+        }
     }
 
     private String parse(BufferedReader in) throws IOException {
@@ -107,7 +109,7 @@ public class Server {
         }
         if (bodyStart < reqLines.size() && bodyStart != 0) {
             for (int i = bodyStart; i < reqLines.size(); i++) {
-                body.append(reqLines.get(i) + "\r\n");
+                body.append(reqLines.get(i).trim());
             }
         }
         return body.toString();
